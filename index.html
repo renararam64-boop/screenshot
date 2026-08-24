@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #0b0d0c;
+    --panel: #121513;
+    --line: #23281f;
+    --text: #e9ede8;
+    --muted: #8a938a;
+    --accent: #7dffb3;
+    --accent-dim: #3a5a45;
+    --danger: #ff6b5e;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html,body{
+    height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    overflow-x:hidden;
+  }
+
+  body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    padding:6vh 20px 40px;
+  }
+
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.15em;
+    color:var(--accent);
+    text-transform:uppercase;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:18px;
+  }
+
+  .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--muted);
+    transition:background .3s;
+  }
+  .dot.live{ background:var(--accent); box-shadow:0 0 8px var(--accent); animation:pulse 1.6s infinite; }
+  .dot.err{ background:var(--danger); box-shadow:0 0 8px var(--danger); }
+
+  @keyframes pulse{
+    0%,100%{opacity:1;}
+    50%{opacity:.4;}
+  }
+
+  h1{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:clamp(28px, 5vw, 44px);
+    letter-spacing:-0.02em;
+    text-align:center;
+    max-width:640px;
+    line-height:1.15;
+  }
+
+  h1 span{ color:var(--muted); font-weight:400; }
+
+  .sub{
+    color:var(--muted);
+    font-size:15px;
+    max-width:460px;
+    text-align:center;
+    margin-top:14px;
+    line-height:1.5;
+  }
+
+  .stage{
+    width:100%;
+    max-width:820px;
+    margin-top:48px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:10px;
+    overflow:hidden;
+    position:relative;
+  }
+
+  .stage-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:0.08em;
+  }
+
+  .frame{
+    aspect-ratio:16/9;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      repeating-linear-gradient(45deg, #0f120f 0 2px, transparent 2px 12px);
+    position:relative;
+  }
+
+  .frame img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+  }
+
+  .placeholder{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--muted);
+    font-size:13px;
+    text-align:center;
+    padding:20px;
+  }
+
+  .corner{
+    position:absolute;
+    width:18px; height:18px;
+    border-color:var(--accent-dim);
+  }
+  .corner.tl{ top:10px; left:10px; border-top:2px solid; border-left:2px solid; }
+  .corner.tr{ top:10px; right:10px; border-top:2px solid; border-right:2px solid; }
+  .corner.bl{ bottom:10px; left:10px; border-bottom:2px solid; border-left:2px solid; }
+  .corner.br{ bottom:10px; right:10px; border-bottom:2px solid; border-right:2px solid; }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    padding:16px;
+    border-top:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+
+  button{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:11px 18px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--text);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+
+  button.primary{
+    background:var(--accent);
+    color:#08110c;
+    border-color:var(--accent);
+    font-weight:700;
+  }
+  button.primary:hover{ opacity:.85; }
+  button:not(.primary):hover{ border-color:var(--accent-dim); color:var(--accent); }
+  button:disabled{ opacity:.35; cursor:not-allowed; }
+
+  .status{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:16px;
+    text-align:center;
+    min-height:16px;
+  }
+  .status.err{ color:var(--danger); }
+
+  .note{
+    margin-top:40px;
+    max-width:520px;
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    line-height:1.6;
+    border-top:1px solid var(--line);
+    padding-top:20px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="eyebrow"><span class="dot" id="statusDot"></span><span id="eyebrowText">awaiting permission</span></div>
+
+  <h1>Screen capture<br><span>on open</span></h1>
+  <p class="sub">This page asks your browser for permission to view your screen, then grabs a single still frame. Nothing is captured without you choosing what to share.</p>
+
+  <div class="stage">
+    <div class="stage-head">
+      <span id="resLabel">no signal</span>
+      <span id="timeLabel">--:--:--</span>
+    </div>
+    <div class="frame" id="frame">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="placeholder" id="placeholder">Waiting for screen-share permission…</div>
+      <img id="shotImg" style="display:none;">
+    </div>
+    <div class="controls">
+      <button class="primary" id="startBtn">Grant &amp; capture</button>
+      <button id="retakeBtn" disabled>Retake</button>
+      <button id="downloadBtn" disabled>Download PNG</button>
+    </div>
+  </div>
+
+  <p class="status" id="statusMsg"></p>
+
+  <p class="note">Browsers require an explicit user gesture and a native share dialog before any page can see your screen. This can't be skipped or automated — it's a platform-level protection, not a limitation of this page.</p>
+
+<script>
+  const startBtn = document.getElementById('startBtn');
+  const retakeBtn = document.getElementById('retakeBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const placeholder = document.getElementById('placeholder');
+  const shotImg = document.getElementById('shotImg');
+  const statusMsg = document.getElementById('statusMsg');
+  const statusDot = document.getElementById('statusDot');
+  const eyebrowText = document.getElementById('eyebrowText');
+  const resLabel = document.getElementById('resLabel');
+  const timeLabel = document.getElementById('timeLabel');
+
+  let lastBlobUrl = null;
+
+  function setStatus(msg, isErr){
+    statusMsg.textContent = msg;
+    statusMsg.className = 'status' + (isErr ? ' err' : '');
+  }
+
+  function setDot(state){
+    statusDot.className = 'dot' + (state === 'live' ? ' live' : state === 'err' ? ' err' : '');
+  }
+
+  async function captureScreen(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+      setStatus('Your browser does not support screen capture.', true);
+      setDot('err');
+      eyebrowText.textContent = 'unsupported browser';
+      return;
+    }
+
+    setStatus('Requesting permission…', false);
+    eyebrowText.textContent = 'awaiting permission';
+    startBtn.disabled = true;
+
+    let stream;
+    try{
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' } });
+    }catch(err){
+      setStatus('Permission denied or cancelled.', true);
+      eyebrowText.textContent = 'permission denied';
+      setDot('err');
+      startBtn.disabled = false;
+      return;
+    }
+
+    eyebrowText.textContent = 'streaming';
+    setDot('live');
+    setStatus('Connected — grabbing a frame…', false);
+
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    await video.play();
+
+    // give it a tick to render a real frame
+    await new Promise(r => setTimeout(r, 250));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    stream.getTracks().forEach(t => t.stop());
+
+    canvas.toBlob(blob => {
+      if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      lastBlobUrl = URL.createObjectURL(blob);
+      shotImg.src = lastBlobUrl;
+      shotImg.style.display = 'block';
+      placeholder.style.display = 'none';
+
+      resLabel.textContent = canvas.width + ' × ' + canvas.height;
+      timeLabel.textContent = new Date().toLocaleTimeString();
+
+      eyebrowText.textContent = 'captured';
+      setDot('');
+      setStatus('Frame captured. Download it or retake.', false);
+
+      startBtn.disabled = true;
+      retakeBtn.disabled = false;
+      downloadBtn.disabled = false;
+    }, 'image/png');
+  }
+
+  startBtn.addEventListener('click', captureScreen);
+
+  retakeBtn.addEventListener('click', () => {
+    shotImg.style.display = 'none';
+    placeholder.style.display = 'block';
+    placeholder.textContent = 'Waiting for screen-share permission…';
+    resLabel.textContent = 'no signal';
+    timeLabel.textContent = '--:--:--';
+    startBtn.disabled = false;
+    retakeBtn.disabled = true;
+    downloadBtn.disabled = true;
+    setDot('');
+    eyebrowText.textContent = 'awaiting permission';
+    setStatus('', false);
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if(!lastBlobUrl) return;
+    const a = document.createElement('a');
+    a.href = lastBlobUrl;
+    a.download = 'screenshot-' + Date.now() + '.png';
+    a.click();
+  });
+</script>
+</body>
+</html>
+
